@@ -7,6 +7,7 @@ import (
 	"github.com/ferdiebergado/fullstackgo/internal/model"
 )
 
+//go:generate mockgen -destination=mocks/user_service_mock.go -package=mocks . UserService
 type UserService interface {
 	CreateUser(ctx context.Context, params model.UserCreateParams) (*model.User, error)
 }

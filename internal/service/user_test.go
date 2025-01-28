@@ -7,6 +7,9 @@ import (
 
 	"github.com/ferdiebergado/fullstackgo/internal/model"
 	"github.com/ferdiebergado/fullstackgo/internal/service"
+	"go.uber.org/mock/gomock"
+
+	dbmocks "github.com/ferdiebergado/fullstackgo/internal/db/mocks"
 )
 
 const (
@@ -16,18 +19,6 @@ const (
 	authMethod   = model.BasicAuth
 )
 
-type mockUserRepo struct {
-	CreateUserFn func(ctx context.Context, params model.UserCreateParams) (*model.User, error)
-}
-
-func (m *mockUserRepo) CreateUser(ctx context.Context, params model.UserCreateParams) (*model.User, error) {
-	if m.CreateUserFn != nil {
-		return m.CreateUserFn(ctx, params)
-	}
-
-	return nil, nil
-}
-
 func TestCreateUserService(t *testing.T) {
 	createParams := model.UserCreateParams{
 		Email:      testEmail,
@@ -35,25 +26,21 @@ func TestCreateUserService(t *testing.T) {
 		AuthMethod: authMethod,
 	}
 
+	ctx := context.Background()
 	now := time.Now().UTC()
 
-	service := service.NewUserService(&mockUserRepo{
-		CreateUserFn: func(ctx context.Context, params model.UserCreateParams) (*model.User, error) {
-			if params != createParams {
-				t.Errorf("want: %s; got: %s", createParams, params)
-			}
+	ctrl := gomock.NewController(t)
+	mockRepo := dbmocks.NewMockUserRepo(ctrl)
+	mockRepo.EXPECT().CreateUser(ctx, createParams).Return(&model.User{
+		ID:         testID,
+		Email:      testEmail,
+		AuthMethod: authMethod,
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}, nil)
+	service := service.NewUserService(mockRepo)
 
-			return &model.User{
-				ID:         testID,
-				Email:      testEmail,
-				AuthMethod: authMethod,
-				CreatedAt:  now,
-				UpdatedAt:  now,
-			}, nil
-		},
-	})
-
-	user, err := service.CreateUser(context.Background(), createParams)
+	user, err := service.CreateUser(ctx, createParams)
 
 	if err != nil {
 		t.Errorf("wanted no error, but got: %v", err)

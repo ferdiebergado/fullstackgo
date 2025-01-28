@@ -6,6 +6,7 @@ import (
 	"github.com/ferdiebergado/fullstackgo/internal/model"
 )
 
+//go:generate mockgen -destination=mocks/user_repo_mock.go -package=mocks . UserRepo
 type UserRepo interface {
 	CreateUser(ctx context.Context, params model.UserCreateParams) (*model.User, error)
 }
@@ -20,15 +21,15 @@ func NewUserRepo(db Querier) UserRepo {
 	}
 }
 
-const createUserQuery = `
+const CreateUserQuery = `
 INSERT into users (email, password_hash, auth_method)
-VALUES $1, $2, $3 
+VALUES $1, $2, $3
 RETURNING id, email, auth_method, created_at, updated_at
 `
 
 func (r *userRepo) CreateUser(ctx context.Context, params model.UserCreateParams) (*model.User, error) {
 	var user model.User
-	if err := r.db.QueryRowContext(ctx, createUserQuery, params.Email, params.Password, params.AuthMethod).Scan(&user.ID, &user.Email, &user.AuthMethod, &user.CreatedAt, &user.UpdatedAt); err != nil {
+	if err := r.db.QueryRowContext(ctx, CreateUserQuery, params.Email, params.Password, params.AuthMethod).Scan(&user.ID, &user.Email, &user.AuthMethod, &user.CreatedAt, &user.UpdatedAt); err != nil {
 		return nil, err
 	}
 

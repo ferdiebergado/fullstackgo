@@ -1,4 +1,3 @@
-//go:generate mockgen -source=db.go -destination=mocks/db_mock.go -package=db_mock
 package db
 
 import (
@@ -6,11 +5,13 @@ import (
 	"database/sql"
 )
 
+//go:generate mockgen -destination=mocks/row_mock.go -package=mocks . Row
 type Row interface {
 	Err() error
 	Scan(dest ...any) error
 }
 
+//go:generate mockgen -destination=mocks/querier_mock.go -package=mocks . Querier
 type Querier interface {
 	QueryRowContext(ctx context.Context, query string, args ...any) Row
 }
