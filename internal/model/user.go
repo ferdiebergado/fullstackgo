@@ -19,8 +19,8 @@ type User struct {
 }
 
 type UserCreateParams struct {
-	Email           string
-	Password        string
-	PasswordConfirm string
-	AuthMethod      AuthMethod
+	Email           string     `json:"email,omitempty"`
+	Password        string     `json:"password,omitempty"`
+	PasswordConfirm string     `json:"password_confirm,omitempty"`
+	AuthMethod      AuthMethod `json:"auth_method"`
 }
