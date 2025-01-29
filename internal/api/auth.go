@@ -8,8 +8,6 @@ import (
 	"github.com/ferdiebergado/fullstackgo/internal/service"
 )
 
-const contentType = "application/json"
-
 type AuthHandler interface {
 	HandleUserSignUp(w http.ResponseWriter, r *http.Request)
 }
@@ -20,7 +18,7 @@ type authHandler struct {
 
 var _ AuthHandler = (*authHandler)(nil)
 
-func NewUserHandler(authService service.AuthService) AuthHandler {
+func NewAuthHandler(authService service.AuthService) AuthHandler {
 	return &authHandler{
 		service: authService,
 	}

@@ -54,7 +54,7 @@ func TestHandleUserSignUpSuccess(t *testing.T) {
 		UpdatedAt: now,
 	}, nil)
 
-	handler := api.NewUserHandler(mockService)
+	handler := api.NewAuthHandler(mockService)
 	handler.HandleUserSignUp(rr, req)
 
 	assert.Equal(t, http.StatusCreated, rr.Code, "Response status code should match")
