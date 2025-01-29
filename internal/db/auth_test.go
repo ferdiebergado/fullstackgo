@@ -2,6 +2,7 @@ package db_test
 
 import (
 	"context"
+	"database/sql"
 	"database/sql/driver"
 	"testing"
 	"time"
@@ -14,24 +15,17 @@ import (
 )
 
 const (
-	testID       = "1"
-	testEmail    = "abc@example.com"
-	testPassword = "hashed"
-	authMethod   = model.BasicAuth
+	testID             = "1"
+	testEmail          = "abc@example.com"
+	testPassword       = "test"
+	testPasswordHashed = "hashed"
+	authMethod         = model.BasicAuth
 )
 
 var sqlmockOpts = sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual)
 
-func TestSignUpUserSuccess(t *testing.T) {
-	mockDB, mock, err := sqlmock.New(sqlmockOpts)
-
-	if err != nil {
-		t.Fatalf("failed to create mock db: %v", err)
-	}
-
-	defer mockDB.Close()
-
-	repo := db.NewAuthRepo(mockDB)
+func TestAuthRepo_SignUpUser_Success(t *testing.T) {
+	mock, repo := setupMockDB(t)
 
 	params := model.UserSignUpParams{
 		Email:    testEmail,
@@ -51,16 +45,8 @@ func TestSignUpUserSuccess(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet(), "some expectations were not met")
 }
 
-func TestSignUpUserDuplicateUser(t *testing.T) {
-	mockDB, mock, err := sqlmock.New(sqlmockOpts)
-
-	if err != nil {
-		t.Fatalf("failed to create mock db: %v", err)
-	}
-
-	defer mockDB.Close()
-
-	repo := db.NewAuthRepo(mockDB)
+func TestAuthRepo_SignUpUser_Duplicate(t *testing.T) {
+	mock, repo := setupMockDB(t)
 
 	params := model.UserSignUpParams{
 		Email:    testEmail,
@@ -69,58 +55,66 @@ func TestSignUpUserDuplicateUser(t *testing.T) {
 
 	mock.ExpectQuery(db.SignUpUserQuery).WithArgs(params.Email, params.Password).WillReturnError(service.ErrDuplicateUser)
 
-	_, err = repo.SignUpUser(context.Background(), params)
+	_, err := repo.SignUpUser(context.Background(), params)
 
 	assert.Error(t, err, "signup should return an error")
 	assert.NoError(t, mock.ExpectationsWereMet(), "some expectations were not met")
 }
 
-func TestSignUpUserInvalidData(t *testing.T) {
-	mockDB, mock, err := sqlmock.New(sqlmockOpts)
-
-	if err != nil {
-		t.Fatalf("failed to create mock db: %v", err)
-	}
-
-	defer mockDB.Close()
-
-	repo := db.NewAuthRepo(mockDB)
+func TestAuthRepo_SignUpUser_InvalidData(t *testing.T) {
+	mock, repo := setupMockDB(t)
 
 	params := model.UserSignUpParams{
 		Email:    testEmail,
 		Password: testPassword,
 	}
 
-	mock.ExpectQuery(db.SignUpUserQuery).WithArgs(testEmail, testPassword).WillReturnError(db.ErrNullValue)
+	mock.ExpectQuery(db.SignUpUserQuery).WithArgs(params.Email, params.Password).WillReturnError(db.ErrNullValue)
 
-	_, err = repo.SignUpUser(context.Background(), params)
+	_, err := repo.SignUpUser(context.Background(), params)
 
 	assert.Error(t, err, "signup should return an error")
 	assert.NoError(t, mock.ExpectationsWereMet(), "some expectations were not met")
 }
 
-func TestSignInUserSuccess(t *testing.T) {
-	mockDB, mock, err := sqlmock.New(sqlmockOpts)
-
-	if err != nil {
-		t.Fatalf("failed to create mock db: %v", err)
-	}
-
-	defer mockDB.Close()
-
-	repo := db.NewAuthRepo(mockDB)
+func TestAuthRepo_SignInUser_Success(t *testing.T) {
+	mock, repo := setupMockDB(t)
 
 	params := model.UserSignInParams{
 		Email:    testEmail,
 		Password: testPassword,
 	}
 
-	hashed := "hashed"
-
-	mock.ExpectQuery(db.SignInUserQuery).WithArgs(params.Email, params.Password).WillReturnRows(sqlmock.NewRows([]string{"password_hash"}).AddRow(hashed))
-	hash, err := repo.SignInUser(context.Background(), params)
+	mock.ExpectQuery(db.SignInUserQuery).WithArgs(params.Email).WillReturnRows(sqlmock.NewRows([]string{"id", "password_hash"}).AddRow(testID, testPasswordHashed))
+	user, err := repo.SignInUser(context.Background(), params)
 
 	assert.NoError(t, err, "signin should not return an error")
-	assert.Equal(t, hashed, hash, "password hash must match")
+	assert.Equal(t, testPasswordHashed, user.PasswordHash, "password hash must match")
 	assert.NoError(t, mock.ExpectationsWereMet(), "some expectations were not met")
+}
+
+func TestAuthRepo_SignInUser_UserNoFound(t *testing.T) {
+	mock, repo := setupMockDB(t)
+
+	params := model.UserSignInParams{
+		Email:    testEmail,
+		Password: testPassword,
+	}
+
+	mock.ExpectQuery(db.SignInUserQuery).WithArgs(params.Email).WillReturnError(sql.ErrNoRows)
+	_, err := repo.SignInUser(context.Background(), params)
+
+	assert.Error(t, err, "signin should return an error")
+	assert.NoError(t, mock.ExpectationsWereMet(), "some expectations were not met")
+}
+
+func setupMockDB(t *testing.T) (sqlmock.Sqlmock, db.Authenticator) {
+	t.Helper()
+	mockDB, mock, err := sqlmock.New(sqlmockOpts)
+	if err != nil {
+		t.Fatalf("failed to create mock db: %v", err)
+	}
+	repo := db.NewAuthRepo(mockDB)
+	t.Cleanup(func() { mockDB.Close() })
+	return mock, repo
 }
