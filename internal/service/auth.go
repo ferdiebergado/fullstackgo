@@ -13,7 +13,7 @@ var ErrDuplicateUser = errors.New("user already exists")
 //go:generate mockgen -destination=mocks/auth_service_mock.go -package=mocks . AuthService
 type AuthService interface {
 	SignUpUser(ctx context.Context, params model.UserSignUpParams) (*model.User, error)
-	SignInUser(ctx context.Context, params model.UserSignInParams) error
+	SignInUser(ctx context.Context, params model.UserSignInParams) (string, error)
 }
 
 type authService struct {
@@ -36,7 +36,6 @@ func (s *authService) SignUpUser(ctx context.Context, params model.UserSignUpPar
 	}
 
 	hash, err := s.hasher.Hash(params.Password)
-
 	if err != nil {
 		return nil, err
 	}
@@ -46,26 +45,25 @@ func (s *authService) SignUpUser(ctx context.Context, params model.UserSignUpPar
 	return s.repo.SignUpUser(ctx, params)
 }
 
-func (s *authService) SignInUser(ctx context.Context, params model.UserSignInParams) error {
+func (s *authService) SignInUser(ctx context.Context, params model.UserSignInParams) (string, error) {
 	if err := s.validator.Struct(params); err != nil {
-		return err
+		return "", err
 	}
 
-	hash, err := s.repo.SignInUser(ctx, params)
-
+	user, err := s.repo.SignInUser(ctx, params)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	ok, err := s.hasher.Verify(params.Password, hash)
+	ok, err := s.hasher.Verify(params.Password, user.PasswordHash)
 
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if !ok {
-		return errors.New("passwords do not match")
+		return "", errors.New("passwords do not match")
 	}
 
-	return nil
+	return user.ID, nil
 }
