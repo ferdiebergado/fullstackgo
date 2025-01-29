@@ -10,7 +10,7 @@ import (
 //go:generate mockgen -destination=mocks/authenticator_mock.go -package=mocks . Authenticator
 type Authenticator interface {
 	SignUpUser(ctx context.Context, params model.UserSignUpParams) (*model.User, error)
-	SignInUser(ctx context.Context, params model.UserSignInParams) (string, error)
+	SignInUser(ctx context.Context, params model.UserSignInParams) (*model.User, error)
 }
 
 type authRepo struct {
@@ -39,16 +39,17 @@ func (r *authRepo) SignUpUser(ctx context.Context, params model.UserSignUpParams
 }
 
 const SignInUserQuery = `
-SELECT password_hash
+SELECT id, password_hash
 FROM users
 WHERE email = $1
 `
 
-func (r *authRepo) SignInUser(ctx context.Context, params model.UserSignInParams) (string, error) {
+func (r *authRepo) SignInUser(ctx context.Context, params model.UserSignInParams) (*model.User, error) {
+	var id string
 	var hash string
-	if err := r.db.QueryRowContext(ctx, SignInUserQuery, params.Email, params.Password).Scan(&hash); err != nil {
-		return "", err
+	if err := r.db.QueryRowContext(ctx, SignInUserQuery, params.Email).Scan(&id, &hash); err != nil {
+		return nil, err
 	}
 
-	return hash, nil
+	return &model.User{ID: id, PasswordHash: hash}, nil
 }

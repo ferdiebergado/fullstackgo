@@ -42,10 +42,10 @@ func (m *MockAuthenticator) EXPECT() *MockAuthenticatorMockRecorder {
 }
 
 // SignInUser mocks base method.
-func (m *MockAuthenticator) SignInUser(ctx context.Context, params model.UserSignInParams) (string, error) {
+func (m *MockAuthenticator) SignInUser(ctx context.Context, params model.UserSignInParams) (*model.User, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SignInUser", ctx, params)
-	ret0, _ := ret[0].(string)
+	ret0, _ := ret[0].(*model.User)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
