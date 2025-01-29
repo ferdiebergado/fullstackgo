@@ -2,7 +2,9 @@ package api_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -18,6 +20,7 @@ import (
 const (
 	contentType = "application/json"
 	signUpURL   = "/api/signup"
+	signInURL   = "/api/signin"
 )
 
 const (
@@ -27,7 +30,7 @@ const (
 	authMethod   = model.BasicAuth
 )
 
-func TestHandleUserSignUpSuccess(t *testing.T) {
+func TestAuthHandler_HandleUserSignUp_Success(t *testing.T) {
 	newUser := model.UserSignUpParams{
 		Email:           testEmail,
 		Password:        testPassword,
@@ -35,40 +38,71 @@ func TestHandleUserSignUpSuccess(t *testing.T) {
 	}
 
 	userJSON, err := json.Marshal(newUser)
-
 	if err != nil {
 		t.Fatalf("json.Marshal: %v, err: %v", newUser, err)
 	}
 
 	req := httptest.NewRequest(http.MethodPost, signUpURL, bytes.NewBuffer(userJSON))
-	req.Header.Set("content-type", contentType)
+	req.Header.Set("Content-Type", contentType)
 	rr := httptest.NewRecorder()
 
-	now := time.Now().UTC()
-	ctrl := gomock.NewController(t)
-	mockService := mocks.NewMockAuthService(ctrl)
-	mockService.EXPECT().SignUpUser(req.Context(), newUser).Return(&model.User{
-		ID:        testID,
-		Email:     newUser.Email,
-		CreatedAt: now,
-		UpdatedAt: now,
-	}, nil)
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	mockService, handler := setupMockService(t)
+	mockService.EXPECT().SignUpUser(req.Context(), newUser).DoAndReturn(
+		func(_ context.Context, params model.UserSignUpParams) (*model.User, error) {
+			tNow := time.Now().UTC().Truncate(time.Millisecond)
+			return &model.User{
+				ID:        testID,
+				Email:     params.Email,
+				CreatedAt: tNow,
+				UpdatedAt: tNow,
+			}, nil
+		},
+	)
 
-	handler := api.NewAuthHandler(mockService)
 	handler.HandleUserSignUp(rr, req)
 
 	assert.Equal(t, http.StatusCreated, rr.Code, "Response status code should match")
 
-	actualContentType := rr.Header().Get("content-type")
+	actualContentType := rr.Header().Get("Content-Type")
 	assert.Equal(t, contentType, actualContentType, "Content-Type header should match")
 
-	var user model.User
-	if err := json.NewDecoder(rr.Body).Decode(&user); err != nil {
-		t.Fatalf("decode json: %v", err)
+	expectedJSON := fmt.Sprintf(`{"id": "%s", "email": "%s", "created_at": "%s", "updated_at": "%s"}`,
+		testID, newUser.Email, now.Format(time.RFC3339Nano), now.Format(time.RFC3339Nano))
+	assert.JSONEq(t, expectedJSON, rr.Body.String(), "Response body should match expected JSON")
+}
+
+func TestAuthHandler_HandleUserSignIn_Success(t *testing.T) {
+	signInParams := model.UserSignInParams{
+		Email:    testEmail,
+		Password: testPassword,
 	}
 
-	assert.Equal(t, testID, user.ID, "ID should match")
-	assert.Equal(t, newUser.Email, user.Email, "Emails should match")
-	assert.Equal(t, now, user.CreatedAt.UTC(), "CreatedAt should match now")
-	assert.Equal(t, now, user.UpdatedAt.UTC(), "UpdatedAt should match now")
+	signInJSON, err := json.Marshal(signInParams)
+	if err != nil {
+		t.Fatalf("json.Marshal: %v, err: %v", signInParams, err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, signInURL, bytes.NewBuffer(signInJSON))
+	req.Header.Set("Content-Type", contentType)
+	rr := httptest.NewRecorder()
+
+	mockService, handler := setupMockService(t)
+	mockService.EXPECT().SignInUser(req.Context(), signInParams).Return(testID, nil)
+
+	handler.HandleUserSignIn(rr, req)
+
+	assert.Equal(t, http.StatusOK, rr.Code, "Response status code should match")
+
+	actualContentType := rr.Header().Get("Content-Type")
+	assert.Equal(t, contentType, actualContentType, "Content-Type header should match")
+}
+
+func setupMockService(t *testing.T) (*mocks.MockAuthService, api.AuthHandler) {
+	t.Helper()
+	ctrl := gomock.NewController(t)
+	mockService := mocks.NewMockAuthService(ctrl)
+	handler := api.NewAuthHandler(mockService)
+
+	return mockService, handler
 }
