@@ -9,6 +9,7 @@ import (
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/ferdiebergado/fullstackgo/internal/db"
 	"github.com/ferdiebergado/fullstackgo/internal/model"
+	"github.com/ferdiebergado/fullstackgo/internal/service"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,7 +31,7 @@ func TestSignUpUserSuccess(t *testing.T) {
 
 	defer mockDB.Close()
 
-	repo := db.NewUserRepo(mockDB)
+	repo := db.NewAuthRepo(mockDB)
 
 	params := model.UserSignUpParams{
 		Email:    testEmail,
@@ -59,14 +60,14 @@ func TestSignUpUserDuplicateUser(t *testing.T) {
 
 	defer mockDB.Close()
 
-	repo := db.NewUserRepo(mockDB)
+	repo := db.NewAuthRepo(mockDB)
 
 	params := model.UserSignUpParams{
 		Email:    testEmail,
 		Password: testPassword,
 	}
 
-	mock.ExpectQuery(db.SignUpUserQuery).WithArgs(params.Email, params.Password).WillReturnError(db.ErrDuplicateUser)
+	mock.ExpectQuery(db.SignUpUserQuery).WithArgs(params.Email, params.Password).WillReturnError(service.ErrDuplicateUser)
 
 	_, err = repo.SignUpUser(context.Background(), params)
 
@@ -83,7 +84,7 @@ func TestSignUpUserInvalidData(t *testing.T) {
 
 	defer mockDB.Close()
 
-	repo := db.NewUserRepo(mockDB)
+	repo := db.NewAuthRepo(mockDB)
 
 	params := model.UserSignUpParams{
 		Email:    testEmail,
@@ -95,5 +96,31 @@ func TestSignUpUserInvalidData(t *testing.T) {
 	_, err = repo.SignUpUser(context.Background(), params)
 
 	assert.Error(t, err, "signup should return an error")
+	assert.NoError(t, mock.ExpectationsWereMet(), "some expectations were not met")
+}
+
+func TestSignInUserSuccess(t *testing.T) {
+	mockDB, mock, err := sqlmock.New(sqlmockOpts)
+
+	if err != nil {
+		t.Fatalf("failed to create mock db: %v", err)
+	}
+
+	defer mockDB.Close()
+
+	repo := db.NewAuthRepo(mockDB)
+
+	params := model.UserSignInParams{
+		Email:    testEmail,
+		Password: testPassword,
+	}
+
+	hashed := "hashed"
+
+	mock.ExpectQuery(db.SignInUserQuery).WithArgs(params.Email, params.Password).WillReturnRows(sqlmock.NewRows([]string{"password_hash"}).AddRow(hashed))
+	hash, err := repo.SignInUser(context.Background(), params)
+
+	assert.NoError(t, err, "signin should not return an error")
+	assert.Equal(t, hashed, hash, "password hash must match")
 	assert.NoError(t, mock.ExpectationsWereMet(), "some expectations were not met")
 }

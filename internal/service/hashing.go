@@ -1,8 +1,11 @@
 package service
 
 import (
+	"crypto/subtle"
 	"encoding/base64"
+	"errors"
 	"fmt"
+	"strings"
 
 	"golang.org/x/crypto/argon2"
 )
@@ -48,5 +51,44 @@ func (h *Argon2Hasher) Hash(plain string) (string, error) {
 
 // Verify implements Hasher.
 func (h *Argon2Hasher) Verify(plain string, hashed string) (bool, error) {
-	panic("unimplemented")
+	parts := strings.Split(hashed, "$")
+	if len(parts) != 6 {
+		return false, errors.New("invalid hash format")
+	}
+
+	// Extract parameters and the salt/hash values
+	var memory uint32
+	var iterations uint32
+	var parallelism uint8
+	_, err := fmt.Sscanf(parts[3], "m=%d,t=%d,p=%d", &memory, &iterations, &parallelism)
+	if err != nil {
+		return false, fmt.Errorf("failed to parse hash parameters: %w", err)
+	}
+
+	salt, err := base64.RawStdEncoding.DecodeString(parts[4])
+	if err != nil {
+		return false, fmt.Errorf("failed to decode salt: %w", err)
+	}
+
+	expectedHash, err := base64.RawStdEncoding.DecodeString(parts[5])
+	if err != nil {
+		return false, fmt.Errorf("failed to decode hash: %w", err)
+	}
+
+	// Check if len(expectedHash) can safely fit in a uint32
+	hashLen := len(expectedHash)
+
+	if hashLen > int(^uint32(0)) { // ^uint32(0) gives the max value of uint32
+		return false, errors.New("expected hash length exceeds uint32 limits")
+	}
+
+	// Compute the hash with the same parameters
+	computedHash := argon2.IDKey([]byte(plain), salt, iterations, memory, parallelism, uint32(hashLen))
+
+	// Constant time comparison to prevent timing attacks
+	if subtle.ConstantTimeCompare(computedHash, expectedHash) == 1 {
+		return true, nil
+	}
+
+	return false, nil
 }

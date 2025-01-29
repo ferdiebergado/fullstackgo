@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 
 	"github.com/ferdiebergado/fullstackgo/internal/model"
 )
@@ -9,13 +10,14 @@ import (
 //go:generate mockgen -destination=mocks/authenticator_mock.go -package=mocks . Authenticator
 type Authenticator interface {
 	SignUpUser(ctx context.Context, params model.UserSignUpParams) (*model.User, error)
+	SignInUser(ctx context.Context, params model.UserSignInParams) (string, error)
 }
 
 type authRepo struct {
-	db Querier
+	db *sql.DB
 }
 
-func NewUserRepo(db Querier) Authenticator {
+func NewAuthRepo(db *sql.DB) Authenticator {
 	return &authRepo{
 		db: db,
 	}
@@ -34,4 +36,19 @@ func (r *authRepo) SignUpUser(ctx context.Context, params model.UserSignUpParams
 	}
 
 	return &user, nil
+}
+
+const SignInUserQuery = `
+SELECT password_hash
+FROM users
+WHERE email = $1
+`
+
+func (r *authRepo) SignInUser(ctx context.Context, params model.UserSignInParams) (string, error) {
+	var hash string
+	if err := r.db.QueryRowContext(ctx, SignInUserQuery, params.Email, params.Password).Scan(&hash); err != nil {
+		return "", err
+	}
+
+	return hash, nil
 }

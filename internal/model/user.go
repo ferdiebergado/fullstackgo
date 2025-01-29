@@ -18,7 +18,12 @@ type User struct {
 }
 
 type UserSignUpParams struct {
-	Email           string `json:"email,omitempty" validate:"required"`
-	Password        string `json:"password,omitempty" validate:"required"`
-	PasswordConfirm string `json:"password_confirm,omitempty" validate:"required,eqfield=password"`
+	Email           string `json:"email" validate:"required,email"`
+	Password        string `json:"password" validate:"required"`
+	PasswordConfirm string `json:"password_confirm" validate:"required,eqfield=password"`
+}
+
+type UserSignInParams struct {
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required"`
 }
