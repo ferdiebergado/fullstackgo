@@ -2,7 +2,6 @@ package service_test
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -24,7 +23,7 @@ const (
 )
 
 func TestAuthService_SignUpUser_Success(t *testing.T) {
-	mockRepo, mockValidator, mockHasher, authService := setupMocks(t)
+	mockRepo, mockHasher, authService := setupMocks(t)
 	ctx := context.Background()
 	now := time.Now().UTC()
 	signUpParams := newSignUpParams()
@@ -40,7 +39,6 @@ func TestAuthService_SignUpUser_Success(t *testing.T) {
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}, nil)
-	mockValidator.EXPECT().Struct(signUpParams).Return(nil)
 	mockHasher.EXPECT().Hash(signUpParams.Password).Return(hashedPassword, nil)
 
 	user, err := authService.SignUpUser(ctx, signUpParams)
@@ -52,53 +50,8 @@ func TestAuthService_SignUpUser_Success(t *testing.T) {
 	assert.Equal(t, now, user.UpdatedAt.UTC(), "UpdatedAt should match now")
 }
 
-var ErrInvalidInput = errors.New("invalid input")
-
-func TestAuthService_SignUpUser_InvalidInput(t *testing.T) {
-	mockRepo, mockValidator, mockHasher, authService := setupMocks(t)
-	ctx := context.Background()
-
-	tests := []struct {
-		name     string
-		expected error
-		given    model.UserSignUpParams
-	}{
-		{"should fail when email is empty", ErrInvalidInput, model.UserSignUpParams{
-			Email:           "",
-			Password:        testPassword,
-			PasswordConfirm: testPassword,
-		}},
-		{"should fail when email is invalid", ErrInvalidInput, model.UserSignUpParams{
-			Email:           "abcd",
-			Password:        testPassword,
-			PasswordConfirm: testPassword,
-		}},
-		{"should fail when password is empty", ErrInvalidInput, model.UserSignUpParams{
-			Email:           testEmail,
-			Password:        "",
-			PasswordConfirm: "otherpassword",
-		}},
-		{"should fail when passwords do not match", ErrInvalidInput, model.UserSignUpParams{
-			Email:           testEmail,
-			Password:        testPassword,
-			PasswordConfirm: "otherpassword",
-		}},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			mockRepo.EXPECT().CreateUser(gomock.Any(), gomock.Any()).Times(0)
-			mockValidator.EXPECT().Struct(tt.given).Return(ErrInvalidInput)
-			mockHasher.EXPECT().Hash(gomock.Any()).Times(0)
-
-			_, err := authService.SignUpUser(ctx, tt.given)
-			assert.Equal(t, err, tt.expected, "signup should return an error")
-		})
-	}
-}
-
 func TestAuthService_SignUpUser_PasswordHashed(t *testing.T) {
-	mockRepo, mockValidator, mockHasher, authService := setupMocks(t)
+	mockRepo, mockHasher, authService := setupMocks(t)
 	ctx := context.Background()
 	now := time.Now().UTC()
 
@@ -114,7 +67,6 @@ func TestAuthService_SignUpUser_PasswordHashed(t *testing.T) {
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}, nil)
-	mockValidator.EXPECT().Struct(signUpParams).Return(nil)
 	mockHasher.EXPECT().Hash(signUpParams.Password).Return(hashedPassword, nil)
 	user, err := authService.SignUpUser(ctx, signUpParams)
 
@@ -124,7 +76,7 @@ func TestAuthService_SignUpUser_PasswordHashed(t *testing.T) {
 
 func TestAuthService_SignInUser_Success(t *testing.T) {
 	ctx := context.Background()
-	mockRepo, mockValidator, mockHasher, authService := setupMocks(t)
+	mockRepo, mockHasher, authService := setupMocks(t)
 
 	signInParams := model.UserSignInParams{
 		Email:    testEmail,
@@ -135,7 +87,6 @@ func TestAuthService_SignInUser_Success(t *testing.T) {
 		ID:           testID,
 		PasswordHash: hashedPassword,
 	}, nil)
-	mockValidator.EXPECT().Struct(signInParams).Return(nil)
 	mockHasher.EXPECT().Verify(signInParams.Password, hashedPassword).Return(true, nil)
 
 	id, err := authService.SignInUser(ctx, signInParams)
@@ -144,15 +95,14 @@ func TestAuthService_SignInUser_Success(t *testing.T) {
 	assert.Equal(t, testID, id, "ID must match")
 }
 
-func setupMocks(t *testing.T) (*dbmocks.MockUserRepo, *mocks.MockValidator, *mocks.MockHasher, service.AuthService) {
+func setupMocks(t *testing.T) (*dbmocks.MockUserRepo, *mocks.MockHasher, service.AuthService) {
 	t.Helper()
 	ctrl := gomock.NewController(t)
 	mockRepo := dbmocks.NewMockUserRepo(ctrl)
-	mockValidator := mocks.NewMockValidator(ctrl)
 	mockHasher := mocks.NewMockHasher(ctrl)
-	userService := service.NewAuthService(mockRepo, mockValidator, mockHasher)
+	userService := service.NewAuthService(mockRepo, mockHasher)
 
-	return mockRepo, mockValidator, mockHasher, userService
+	return mockRepo, mockHasher, userService
 }
 
 func newSignUpParams() model.UserSignUpParams {
