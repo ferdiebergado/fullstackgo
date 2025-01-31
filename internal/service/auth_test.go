@@ -28,10 +28,12 @@ func TestAuthService_SignUpUser_Success(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()
 	signUpParams := newSignUpParams()
-	signUpParamsHashed := newSignUpParams()
-	signUpParamsHashed.Password = hashedPassword
+	createParams := &model.UserCreateParams{
+		Email:        signUpParams.Email,
+		PasswordHash: hashedPassword,
+	}
 
-	mockRepo.EXPECT().SignUpUser(ctx, signUpParamsHashed).Return(&model.User{
+	mockRepo.EXPECT().CreateUser(ctx, *createParams).Return(&model.User{
 		ID:           testID,
 		Email:        testEmail,
 		PasswordHash: hashedPassword,
@@ -85,7 +87,7 @@ func TestAuthService_SignUpUser_InvalidInput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockRepo.EXPECT().SignUpUser(gomock.Any(), gomock.Any()).Times(0)
+			mockRepo.EXPECT().CreateUser(gomock.Any(), gomock.Any()).Times(0)
 			mockValidator.EXPECT().Struct(tt.given).Return(ErrInvalidInput)
 			mockHasher.EXPECT().Hash(gomock.Any()).Times(0)
 
@@ -101,10 +103,11 @@ func TestAuthService_SignUpUser_PasswordHashed(t *testing.T) {
 	now := time.Now().UTC()
 
 	signUpParams := newSignUpParams()
-	signUpParamsHashed := newSignUpParams()
-
-	signUpParamsHashed.Password = hashedPassword
-	mockRepo.EXPECT().SignUpUser(ctx, signUpParamsHashed).Return(&model.User{
+	createParams := model.UserCreateParams{
+		Email:        signUpParams.Email,
+		PasswordHash: hashedPassword,
+	}
+	mockRepo.EXPECT().CreateUser(ctx, createParams).Return(&model.User{
 		ID:           testID,
 		Email:        signUpParams.Email,
 		PasswordHash: hashedPassword,
@@ -128,7 +131,7 @@ func TestAuthService_SignInUser_Success(t *testing.T) {
 		Password: testPassword,
 	}
 
-	mockRepo.EXPECT().SignInUser(ctx, signInParams).Return(&model.User{
+	mockRepo.EXPECT().FindUserByEmail(ctx, signInParams.Email).Return(&model.User{
 		ID:           testID,
 		PasswordHash: hashedPassword,
 	}, nil)
@@ -141,10 +144,10 @@ func TestAuthService_SignInUser_Success(t *testing.T) {
 	assert.Equal(t, testID, id, "ID must match")
 }
 
-func setupMocks(t *testing.T) (*dbmocks.MockAuthenticator, *mocks.MockValidator, *mocks.MockHasher, service.AuthService) {
+func setupMocks(t *testing.T) (*dbmocks.MockUserRepo, *mocks.MockValidator, *mocks.MockHasher, service.AuthService) {
 	t.Helper()
 	ctrl := gomock.NewController(t)
-	mockRepo := dbmocks.NewMockAuthenticator(ctrl)
+	mockRepo := dbmocks.NewMockUserRepo(ctrl)
 	mockValidator := mocks.NewMockValidator(ctrl)
 	mockHasher := mocks.NewMockHasher(ctrl)
 	userService := service.NewAuthService(mockRepo, mockValidator, mockHasher)

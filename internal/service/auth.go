@@ -18,12 +18,12 @@ type AuthService interface {
 }
 
 type authService struct {
-	repo      db.Authenticator
+	repo      db.UserRepo
 	validator Validator
 	hasher    Hasher
 }
 
-func NewAuthService(repo db.Authenticator, validator Validator, hasher Hasher) AuthService {
+func NewAuthService(repo db.UserRepo, validator Validator, hasher Hasher) AuthService {
 	return &authService{
 		repo:      repo,
 		validator: validator,
@@ -41,9 +41,12 @@ func (s *authService) SignUpUser(ctx context.Context, params model.UserSignUpPar
 		return nil, fmt.Errorf("hash password: %w", err)
 	}
 
-	params.Password = hash
+	createParams := model.UserCreateParams{
+		Email:        params.Email,
+		PasswordHash: hash,
+	}
 
-	return s.repo.SignUpUser(ctx, params)
+	return s.repo.CreateUser(ctx, createParams)
 }
 
 func (s *authService) SignInUser(ctx context.Context, params model.UserSignInParams) (string, error) {
@@ -51,7 +54,7 @@ func (s *authService) SignInUser(ctx context.Context, params model.UserSignInPar
 		return "", err
 	}
 
-	user, err := s.repo.SignInUser(ctx, params)
+	user, err := s.repo.FindUserByEmail(ctx, params.Email)
 	if err != nil {
 		return "", err
 	}
