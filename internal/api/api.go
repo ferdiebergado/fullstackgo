@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
@@ -11,7 +12,7 @@ func DecodeJSON(r *http.Request, dest any) error {
 	dec := json.NewDecoder(r.Body)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(dest); err != nil {
-		return err
+		return fmt.Errorf("decode json: %w", err)
 	}
 	return nil
 }

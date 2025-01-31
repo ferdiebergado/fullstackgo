@@ -4,6 +4,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/ferdiebergado/fullstackgo/internal/db"
 	"github.com/ferdiebergado/fullstackgo/internal/model"
@@ -37,7 +38,7 @@ func (s *authService) SignUpUser(ctx context.Context, params model.UserSignUpPar
 
 	hash, err := s.hasher.Hash(params.Password)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("hash password: %w", err)
 	}
 
 	params.Password = hash
