@@ -27,7 +27,6 @@ const (
 	testID       = "1"
 	testEmail    = "abc@example.com"
 	testPassword = "hashed"
-	authMethod   = model.BasicAuth
 )
 
 func TestAuthHandler_HandleUserSignUp_Success(t *testing.T) {

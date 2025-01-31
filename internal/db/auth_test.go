@@ -18,7 +18,6 @@ const (
 	testEmail          = "abc@example.com"
 	testPassword       = "test"
 	testPasswordHashed = "hashed"
-	authMethod         = model.BasicAuth
 )
 
 var sqlmockOpts = sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual)

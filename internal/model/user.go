@@ -2,13 +2,6 @@ package model
 
 import "time"
 
-type AuthMethod string
-
-const (
-	BasicAuth AuthMethod = "email/password"
-	Oath      AuthMethod = "oauth"
-)
-
 type User struct {
 	ID           string    `json:"id"`
 	Email        string    `json:"email"`
