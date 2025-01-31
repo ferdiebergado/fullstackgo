@@ -3,7 +3,6 @@ package db_test
 import (
 	"context"
 	"database/sql"
-	"database/sql/driver"
 	"testing"
 	"time"
 
@@ -28,15 +27,18 @@ func TestAuthRepo_SignUpUser_Success(t *testing.T) {
 	mock, repo := setupMockDB(t)
 
 	params := model.UserSignUpParams{
-		Email:    testEmail,
-		Password: testPassword,
+		Email:           testEmail,
+		Password:        testPassword,
+		PasswordConfirm: testPassword,
 	}
 
 	now := time.Now().UTC()
 	cols := []string{"id", "email", "created_at", "updated_at"}
-	row := []driver.Value{testID, testEmail, now, now}
 
-	mock.ExpectQuery(db.SignUpUserQuery).WithArgs(params.Email, params.Password).WillReturnRows(sqlmock.NewRows(cols).AddRow(row...))
+	mock.ExpectQuery(db.SignUpUserQuery).
+		WithArgs(params.Email, params.Password).
+		WillReturnRows(sqlmock.NewRows(cols).
+			AddRow(testID, testEmail, now, now))
 	user, err := repo.SignUpUser(context.Background(), params)
 
 	assert.NoError(t, err, "signup should not return an error")
@@ -53,7 +55,9 @@ func TestAuthRepo_SignUpUser_Duplicate(t *testing.T) {
 		Password: testPassword,
 	}
 
-	mock.ExpectQuery(db.SignUpUserQuery).WithArgs(params.Email, params.Password).WillReturnError(service.ErrDuplicateUser)
+	mock.ExpectQuery(db.SignUpUserQuery).
+		WithArgs(params.Email, params.Password).
+		WillReturnError(service.ErrDuplicateUser)
 
 	_, err := repo.SignUpUser(context.Background(), params)
 
@@ -69,7 +73,9 @@ func TestAuthRepo_SignUpUser_InvalidData(t *testing.T) {
 		Password: testPassword,
 	}
 
-	mock.ExpectQuery(db.SignUpUserQuery).WithArgs(params.Email, params.Password).WillReturnError(db.ErrNullValue)
+	mock.ExpectQuery(db.SignUpUserQuery).
+		WithArgs(params.Email, params.Password).
+		WillReturnError(db.ErrNullValue)
 
 	_, err := repo.SignUpUser(context.Background(), params)
 
@@ -85,7 +91,10 @@ func TestAuthRepo_SignInUser_Success(t *testing.T) {
 		Password: testPassword,
 	}
 
-	mock.ExpectQuery(db.SignInUserQuery).WithArgs(params.Email).WillReturnRows(sqlmock.NewRows([]string{"id", "password_hash"}).AddRow(testID, testPasswordHashed))
+	mock.ExpectQuery(db.SignInUserQuery).
+		WithArgs(params.Email).
+		WillReturnRows(sqlmock.NewRows([]string{"id", "password_hash"}).
+			AddRow(testID, testPasswordHashed))
 	user, err := repo.SignInUser(context.Background(), params)
 
 	assert.NoError(t, err, "signin should not return an error")
