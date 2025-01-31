@@ -1,3 +1,4 @@
+//go:generate mockgen -destination=mocks/hasher_mock.go -package=mocks . Hasher
 package service
 
 import (
@@ -10,7 +11,6 @@ import (
 	"golang.org/x/crypto/argon2"
 )
 
-//go:generate mockgen -destination=mocks/hasher_mock.go -package=mocks . Hasher
 type Hasher interface {
 	Hash(plain string) (string, error)
 	Verify(plain, hashed string) (bool, error)

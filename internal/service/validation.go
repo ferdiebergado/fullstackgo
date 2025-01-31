@@ -1,3 +1,4 @@
+//go:generate mockgen -destination=mocks/validator_mock.go -package=mocks . Validator
 package service
 
 import (
@@ -21,7 +22,6 @@ type Error struct {
 	Message         string `json:"message"`
 }
 
-//go:generate mockgen -destination=mocks/validator_mock.go -package=mocks . Validator
 type Validator interface {
 	Struct(s any) error
 }

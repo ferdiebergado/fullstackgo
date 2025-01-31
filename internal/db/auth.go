@@ -1,3 +1,4 @@
+//go:generate mockgen -destination=mocks/authenticator_mock.go -package=mocks . Authenticator
 package db
 
 import (
@@ -7,7 +8,6 @@ import (
 	"github.com/ferdiebergado/fullstackgo/internal/model"
 )
 
-//go:generate mockgen -destination=mocks/authenticator_mock.go -package=mocks . Authenticator
 type Authenticator interface {
 	SignUpUser(ctx context.Context, params model.UserSignUpParams) (*model.User, error)
 	SignInUser(ctx context.Context, params model.UserSignInParams) (*model.User, error)

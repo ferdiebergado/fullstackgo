@@ -1,3 +1,4 @@
+//go:generate mockgen -destination=mocks/auth_service_mock.go -package=mocks . AuthService
 package service
 
 import (
@@ -10,7 +11,6 @@ import (
 
 var ErrDuplicateUser = errors.New("user already exists")
 
-//go:generate mockgen -destination=mocks/auth_service_mock.go -package=mocks . AuthService
 type AuthService interface {
 	SignUpUser(ctx context.Context, params model.UserSignUpParams) (*model.User, error)
 	SignInUser(ctx context.Context, params model.UserSignInParams) (string, error)
