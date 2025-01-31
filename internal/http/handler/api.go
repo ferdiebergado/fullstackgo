@@ -1,12 +1,15 @@
-package api
+package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 )
 
 const contentType = "application/json"
+
+var ErrInvalidInput = errors.New("invalid input")
 
 func DecodeJSON(r *http.Request, dest any) error {
 	dec := json.NewDecoder(r.Body)

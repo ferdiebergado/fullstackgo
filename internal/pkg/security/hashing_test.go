@@ -1,15 +1,15 @@
-package service_test
+package security_test
 
 import (
 	"strings"
 	"testing"
 
-	"github.com/ferdiebergado/fullstackgo/internal/service"
+	"github.com/ferdiebergado/fullstackgo/internal/pkg/security"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestArgon2Hasher_Hash(t *testing.T) {
-	hasher := &service.Argon2Hasher{}
+	hasher := &security.Argon2Hasher{}
 	password := "securepassword"
 
 	hashed, err := hasher.Hash(password)

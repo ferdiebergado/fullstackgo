@@ -1,5 +1,5 @@
 //go:generate mockgen -destination=mocks/hasher_mock.go -package=mocks . Hasher
-package service
+package security
 
 import (
 	"crypto/subtle"

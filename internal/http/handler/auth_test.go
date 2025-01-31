@@ -1,4 +1,4 @@
-package api_test
+package handler_test
 
 import (
 	"bytes"
@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ferdiebergado/fullstackgo/internal/api"
-	apiMocks "github.com/ferdiebergado/fullstackgo/internal/api/mocks"
+	"github.com/ferdiebergado/fullstackgo/internal/http/handler"
 	"github.com/ferdiebergado/fullstackgo/internal/model"
+	validationMocks "github.com/ferdiebergado/fullstackgo/internal/pkg/validation/mocks"
 	"github.com/ferdiebergado/fullstackgo/internal/service/mocks"
 
 	"github.com/stretchr/testify/assert"
@@ -102,29 +102,29 @@ func TestAuthHandler_HandleUserSignIn_Success(t *testing.T) {
 }
 
 func TestAuthAPI_SignUpUser_InvalidInput(t *testing.T) {
-	mockService, mockValidator, handler := setupMockService(t)
+	mockService, mockValidator, authHandler := setupMockService(t)
 
 	tests := []struct {
 		name     string
 		expected error
 		given    model.UserSignUpParams
 	}{
-		{"should fail when email is empty", api.ErrInvalidInput, model.UserSignUpParams{
+		{"should fail when email is empty", handler.ErrInvalidInput, model.UserSignUpParams{
 			Email:           "",
 			Password:        testPassword,
 			PasswordConfirm: testPassword,
 		}},
-		{"should fail when email is invalid", api.ErrInvalidInput, model.UserSignUpParams{
+		{"should fail when email is invalid", handler.ErrInvalidInput, model.UserSignUpParams{
 			Email:           "abcd",
 			Password:        testPassword,
 			PasswordConfirm: testPassword,
 		}},
-		{"should fail when password is empty", api.ErrInvalidInput, model.UserSignUpParams{
+		{"should fail when password is empty", handler.ErrInvalidInput, model.UserSignUpParams{
 			Email:           testEmail,
 			Password:        "",
 			PasswordConfirm: "otherpassword",
 		}},
-		{"should fail when passwords do not match", api.ErrInvalidInput, model.UserSignUpParams{
+		{"should fail when passwords do not match", handler.ErrInvalidInput, model.UserSignUpParams{
 			Email:           testEmail,
 			Password:        testPassword,
 			PasswordConfirm: "otherpassword",
@@ -137,24 +137,24 @@ func TestAuthAPI_SignUpUser_InvalidInput(t *testing.T) {
 			if err != nil {
 				t.Fatalf("json.Marshal: %v, err: %v", tt.given, err)
 			}
-			mockValidator.EXPECT().Struct(tt.given).Return(api.ErrInvalidInput)
+			mockValidator.EXPECT().Struct(tt.given).Return(handler.ErrInvalidInput)
 			mockService.EXPECT().SignUpUser(gomock.Any(), gomock.Any()).Times(0)
 			req := httptest.NewRequest(http.MethodPost, signUpURL, bytes.NewBuffer(signUpJSON))
 			req.Header.Set("Content-Type", contentType)
 			rr := httptest.NewRecorder()
-			handler.HandleUserSignUp(rr, req)
+			authHandler.HandleUserSignUp(rr, req)
 
 			assert.Equal(t, rr.Code, http.StatusUnprocessableEntity, "signup should return an error 422")
 		})
 	}
 }
 
-func setupMockService(t *testing.T) (*mocks.MockAuthService, *apiMocks.MockValidator, api.AuthHandler) {
+func setupMockService(t *testing.T) (*mocks.MockAuthService, *validationMocks.MockValidator, handler.AuthHandler) {
 	t.Helper()
 	ctrl := gomock.NewController(t)
 	mockService := mocks.NewMockAuthService(ctrl)
-	mockValidator := apiMocks.NewMockValidator(ctrl)
-	handler := api.NewAuthHandler(mockService, mockValidator)
+	mockValidator := validationMocks.NewMockValidator(ctrl)
+	handler := handler.NewAuthHandler(mockService, mockValidator)
 
 	return mockService, mockValidator, handler
 }

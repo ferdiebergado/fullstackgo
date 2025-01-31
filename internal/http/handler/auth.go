@@ -1,9 +1,10 @@
-package api
+package handler
 
 import (
 	"net/http"
 
 	"github.com/ferdiebergado/fullstackgo/internal/model"
+	"github.com/ferdiebergado/fullstackgo/internal/pkg/validation"
 	"github.com/ferdiebergado/fullstackgo/internal/service"
 	"github.com/go-playground/validator/v10"
 )
@@ -15,12 +16,12 @@ type AuthHandler interface {
 
 type authHandler struct {
 	service   service.AuthService
-	validator Validator
+	validator validation.Validator
 }
 
 var _ AuthHandler = (*authHandler)(nil)
 
-func NewAuthHandler(authService service.AuthService, validator Validator) AuthHandler {
+func NewAuthHandler(authService service.AuthService, validator validation.Validator) AuthHandler {
 	return &authHandler{
 		service:   authService,
 		validator: validator,

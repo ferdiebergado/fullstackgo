@@ -1,5 +1,5 @@
 //go:generate mockgen -destination=mocks/userrepo_mock.go -package=mocks . UserRepo
-package db
+package repo
 
 import (
 	"context"

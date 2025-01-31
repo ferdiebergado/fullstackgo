@@ -6,8 +6,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/ferdiebergado/fullstackgo/internal/db"
 	"github.com/ferdiebergado/fullstackgo/internal/model"
+	"github.com/ferdiebergado/fullstackgo/internal/pkg/security"
+	"github.com/ferdiebergado/fullstackgo/internal/repo"
 )
 
 var ErrDuplicateUser = errors.New("user already exists")
@@ -18,11 +19,11 @@ type AuthService interface {
 }
 
 type authService struct {
-	repo   db.UserRepo
-	hasher Hasher
+	repo   repo.UserRepo
+	hasher security.Hasher
 }
 
-func NewAuthService(repo db.UserRepo, hasher Hasher) AuthService {
+func NewAuthService(repo repo.UserRepo, hasher security.Hasher) AuthService {
 	return &authService{
 		repo:   repo,
 		hasher: hasher,

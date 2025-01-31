@@ -1,8 +1,7 @@
 //go:generate mockgen -destination=mocks/validator_mock.go -package=mocks . Validator
-package api
+package validation
 
 import (
-	"errors"
 	"reflect"
 	"strings"
 
@@ -22,8 +21,6 @@ type Error struct {
 	Param           string `json:"param"`
 	Message         string `json:"message"`
 }
-
-var ErrInvalidInput = errors.New("invalid input")
 
 type Validator interface {
 	Struct(s any) error

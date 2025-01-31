@@ -11,8 +11,8 @@ import (
 
 	"go.uber.org/mock/gomock"
 
-	dbmocks "github.com/ferdiebergado/fullstackgo/internal/db/mocks"
-	"github.com/ferdiebergado/fullstackgo/internal/service/mocks"
+	secMocks "github.com/ferdiebergado/fullstackgo/internal/pkg/security/mocks"
+	repoMocks "github.com/ferdiebergado/fullstackgo/internal/repo/mocks"
 )
 
 const (
@@ -95,11 +95,11 @@ func TestAuthService_SignInUser_Success(t *testing.T) {
 	assert.Equal(t, testID, id, "ID must match")
 }
 
-func setupMocks(t *testing.T) (*dbmocks.MockUserRepo, *mocks.MockHasher, service.AuthService) {
+func setupMocks(t *testing.T) (*repoMocks.MockUserRepo, *secMocks.MockHasher, service.AuthService) {
 	t.Helper()
 	ctrl := gomock.NewController(t)
-	mockRepo := dbmocks.NewMockUserRepo(ctrl)
-	mockHasher := mocks.NewMockHasher(ctrl)
+	mockRepo := repoMocks.NewMockUserRepo(ctrl)
+	mockHasher := secMocks.NewMockHasher(ctrl)
 	userService := service.NewAuthService(mockRepo, mockHasher)
 
 	return mockRepo, mockHasher, userService
