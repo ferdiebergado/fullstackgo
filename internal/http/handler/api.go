@@ -27,7 +27,7 @@ func DecodeJSON(r *http.Request, dest any) error {
 func responseJSON(w http.ResponseWriter, status int, data any) {
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w)
 		return
 	}
 
@@ -35,7 +35,7 @@ func responseJSON(w http.ResponseWriter, status int, data any) {
 	w.WriteHeader(status)
 	_, err = w.Write(jsonData)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w)
 		return
 	}
 }
