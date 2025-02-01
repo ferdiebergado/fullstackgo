@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/ferdiebergado/fullstackgo/internal/model"
 	validationMocks "github.com/ferdiebergado/fullstackgo/internal/pkg/validation/mocks"
 	"github.com/ferdiebergado/fullstackgo/internal/service/mocks"
+	"github.com/go-playground/validator/v10"
 
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
@@ -105,34 +107,40 @@ func TestAuthHandler_HandleUserSignIn_Success(t *testing.T) {
 	assert.Equal(t, contentType, actualContentType, "Content-Type header should match")
 }
 
-func TestAuthAPI_SignUpUser_InvalidInput(t *testing.T) {
+func TestAuthHandler_SignUpUser_InvalidInput(t *testing.T) {
 	mockService, mockValidator, authHandler := setupMockService(t)
 
 	tests := []struct {
-		name     string
-		expected error
-		given    model.UserSignUpParams
+		name  string
+		given model.UserSignUpParams
+		field string
+		tag   string
 	}{
-		{"should fail when email is empty", handler.ErrInvalidInput, model.UserSignUpParams{
+		{"should fail when email is empty", model.UserSignUpParams{
 			Email:           "",
 			Password:        testPassword,
 			PasswordConfirm: testPassword,
-		}},
-		{"should fail when email is invalid", handler.ErrInvalidInput, model.UserSignUpParams{
+		},
+			"email",
+			"required",
+		},
+		{"should fail when email is invalid", model.UserSignUpParams{
 			Email:           "abcd",
 			Password:        testPassword,
 			PasswordConfirm: testPassword,
-		}},
-		{"should fail when password is empty", handler.ErrInvalidInput, model.UserSignUpParams{
+		}, "Email", "email"},
+		{"should fail when password is empty", model.UserSignUpParams{
 			Email:           testEmail,
 			Password:        "",
 			PasswordConfirm: "otherpassword",
-		}},
-		{"should fail when passwords do not match", handler.ErrInvalidInput, model.UserSignUpParams{
+		}, "Password", "required",
+		},
+		{"should fail when passwords do not match", model.UserSignUpParams{
 			Email:           testEmail,
 			Password:        testPassword,
 			PasswordConfirm: "otherpassword",
-		}},
+		}, "PasswordConfirm", "eqfield",
+		},
 	}
 
 	for _, tt := range tests {
@@ -141,14 +149,29 @@ func TestAuthAPI_SignUpUser_InvalidInput(t *testing.T) {
 			if err != nil {
 				t.Fatalf("json.Marshal: %v, err: %v", tt.given, err)
 			}
-			mockValidator.EXPECT().Struct(tt.given).Return(handler.ErrInvalidInput)
+
+			mockValidator.EXPECT().Struct(tt.given).Return(&validator.ValidationErrors{
+				validationMocks.MockFieldError{
+					FieldName: tt.field,
+					TagName:   tt.tag,
+				},
+			})
 			mockService.EXPECT().SignUpUser(gomock.Any(), gomock.Any()).Times(0)
 			req := httptest.NewRequest(http.MethodPost, signUpURL, bytes.NewBuffer(signUpJSON))
 			req.Header.Set("Content-Type", contentType)
 			rr := httptest.NewRecorder()
-			authHandler.HandleUserSignUp(rr, req)
 
-			assert.Equal(t, rr.Code, http.StatusUnprocessableEntity, "signup should return an error 422")
+			authHandler.HandleUserSignUp(rr, req)
+			assert.Equal(t, rr.Code, http.StatusUnprocessableEntity, "signup should return http error 422")
+
+			var res handler.APIResponse
+			if err := json.NewDecoder(rr.Body).Decode(&res); err != nil {
+				t.Fatalf("decode json: %v", err)
+			}
+
+			assert.Equal(t, "Invalid input!", res.Message, "Message should match")
+			assert.NotEmpty(t, res.Errors, "Errors must not be empty")
+			assert.Equal(t, fmt.Sprintf("validation failed on field %s with tag %s", tt.field, tt.tag), res.Errors[0][tt.field], "validation error must match")
 		})
 	}
 }

@@ -2,12 +2,15 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 )
 
-var ErrInvalidInput = errors.New("invalid input")
+type APIResponse struct {
+	Message string              `json:"message"`
+	Errors  []map[string]string `json:"errors,omitempty"`
+	Data    any                 `json:"data,omitempty"`
+}
 
 func DecodeJSON(r *http.Request, dest any) error {
 	dec := json.NewDecoder(r.Body)
