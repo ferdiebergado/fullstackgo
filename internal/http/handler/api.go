@@ -7,8 +7,6 @@ import (
 	"net/http"
 )
 
-const contentType = "application/json"
-
 var ErrInvalidInput = errors.New("invalid input")
 
 func DecodeJSON(r *http.Request, dest any) error {
@@ -27,7 +25,7 @@ func responseJSON(w http.ResponseWriter, status int, data any) {
 		return
 	}
 
-	w.Header().Add("Content-Type", contentType)
+	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_, err = w.Write(jsonData)
 	if err != nil {
