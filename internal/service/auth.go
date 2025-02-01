@@ -3,6 +3,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
@@ -10,8 +11,6 @@ import (
 	"github.com/ferdiebergado/fullstackgo/internal/pkg/security"
 	"github.com/ferdiebergado/fullstackgo/internal/repo"
 )
-
-var ErrDuplicateUser = errors.New("user already exists")
 
 type AuthService interface {
 	SignUpUser(ctx context.Context, params model.UserSignUpParams) (*model.User, error)
@@ -31,12 +30,22 @@ func NewAuthService(repo repo.UserRepo, hasher security.Hasher) AuthService {
 }
 
 func (s *authService) SignUpUser(ctx context.Context, params model.UserSignUpParams) (*model.User, error) {
+	existing, err := s.repo.FindUserByEmail(ctx, params.Email)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if existing != nil {
+		return nil, ErrModelExists
+	}
+
 	hash, err := s.hasher.Hash(params.Password)
 	if err != nil {
 		return nil, fmt.Errorf("hash password: %w", err)
 	}
 
-	createParams := model.UserCreateParams{
+	createParams := model.User{
 		Email:        params.Email,
 		PasswordHash: hash,
 	}
@@ -47,6 +56,10 @@ func (s *authService) SignUpUser(ctx context.Context, params model.UserSignUpPar
 func (s *authService) SignInUser(ctx context.Context, params model.UserSignInParams) (string, error) {
 	user, err := s.repo.FindUserByEmail(ctx, params.Email)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", ErrModelNotFound
+		}
+
 		return "", err
 	}
 
