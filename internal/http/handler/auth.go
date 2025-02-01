@@ -43,17 +43,29 @@ func (h *authHandler) HandleUserSignUp(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w)
 		return
 	}
 
-	newUser, err := h.service.SignUpUser(r.Context(), params)
+	user, err := h.service.SignUpUser(r.Context(), params)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		if errors.Is(err, service.ErrEmailTaken) {
+			res := APIResponse{
+				Message: "Invalid input!",
+				Errors: []map[string]string{
+					{"email": err.Error()},
+				},
+			}
+
+			responseJSON(w, http.StatusUnprocessableEntity, res)
+			return
+		}
+
+		serverError(w)
 		return
 	}
 
-	responseJSON(w, http.StatusCreated, newUser)
+	responseJSON(w, http.StatusCreated, user)
 }
 
 func (h *authHandler) HandleUserSignIn(w http.ResponseWriter, r *http.Request) {
@@ -70,13 +82,13 @@ func (h *authHandler) HandleUserSignIn(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w)
 		return
 	}
 
 	_, err := h.service.SignInUser(r.Context(), params)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		serverError(w)
 		return
 	}
 

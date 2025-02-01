@@ -13,6 +13,7 @@ import (
 	"github.com/ferdiebergado/fullstackgo/internal/http/handler"
 	"github.com/ferdiebergado/fullstackgo/internal/model"
 	validationMocks "github.com/ferdiebergado/fullstackgo/internal/pkg/validation/mocks"
+	"github.com/ferdiebergado/fullstackgo/internal/service"
 	"github.com/ferdiebergado/fullstackgo/internal/service/mocks"
 	"github.com/go-playground/validator/v10"
 
@@ -80,10 +81,11 @@ func TestAuthHandler_HandleUserSignUp_Success(t *testing.T) {
 	assert.NotZero(t, newUser.UpdatedAt, "UpdatedAt should not be zero")
 }
 
-func TestAuthHandler_HandleUserSignIn_Success(t *testing.T) {
-	params := model.UserSignInParams{
-		Email:    testEmail,
-		Password: testPassword,
+func TestAuthHandler_HandleUserSignUp_DuplicateUser(t *testing.T) {
+	params := model.UserSignUpParams{
+		Email:           testEmail,
+		Password:        testPassword,
+		PasswordConfirm: testPassword,
 	}
 
 	jsonParams, err := json.Marshal(params)
@@ -91,22 +93,31 @@ func TestAuthHandler_HandleUserSignIn_Success(t *testing.T) {
 		t.Fatalf("json.Marshal: %v, err: %v", params, err)
 	}
 
-	req := httptest.NewRequest(http.MethodPost, signInURL, bytes.NewBuffer(jsonParams))
+	req := httptest.NewRequest(http.MethodPost, signUpURL, bytes.NewBuffer(jsonParams))
 	req.Header.Set("Content-Type", contentType)
 	rr := httptest.NewRecorder()
 
 	mockService, mockValidator, authHandler := setupMockService(t)
-	mockService.EXPECT().SignInUser(req.Context(), params).Return(testID, nil)
 	mockValidator.EXPECT().Struct(params).Return(nil)
+	mockService.EXPECT().SignUpUser(req.Context(), params).Return(nil, service.ErrEmailTaken)
 
-	authHandler.HandleUserSignIn(rr, req)
-	assert.Equal(t, http.StatusOK, rr.Code, "Response status code should match")
+	authHandler.HandleUserSignUp(rr, req)
+	assert.Equal(t, http.StatusUnprocessableEntity, rr.Code, "Response status code should match")
 
 	actualContentType := rr.Header().Get("Content-Type")
 	assert.Equal(t, contentType, actualContentType, "Content-Type header should match")
+
+	var res handler.APIResponse
+	if err = json.Unmarshal(rr.Body.Bytes(), &res); err != nil {
+		t.Fatalf("decode json: %v", err)
+	}
+
+	assert.Equal(t, "Invalid input!", res.Message, "Message should match")
+	assert.NotEmpty(t, res.Errors, "Errors should not be empty")
+	assert.Equal(t, service.ErrEmailTaken.Error(), res.Errors[0]["email"], "Validation errors should match")
 }
 
-func TestAuthHandler_SignUpUser_InvalidInput(t *testing.T) {
+func TestAuthHandler_HandleSignUpUser_InvalidInput(t *testing.T) {
 	mockService, mockValidator, authHandler := setupMockService(t)
 
 	tests := []struct {
@@ -173,6 +184,32 @@ func TestAuthHandler_SignUpUser_InvalidInput(t *testing.T) {
 			assert.Equal(t, fmt.Sprintf("validation failed on field %s with tag %s", tt.field, tt.tag), res.Errors[0][tt.field], "validation error must match")
 		})
 	}
+}
+
+func TestAuthHandler_HandleUserSignIn_Success(t *testing.T) {
+	params := model.UserSignInParams{
+		Email:    testEmail,
+		Password: testPassword,
+	}
+
+	jsonParams, err := json.Marshal(params)
+	if err != nil {
+		t.Fatalf("json.Marshal: %v, err: %v", params, err)
+	}
+
+	req := httptest.NewRequest(http.MethodPost, signInURL, bytes.NewBuffer(jsonParams))
+	req.Header.Set("Content-Type", contentType)
+	rr := httptest.NewRecorder()
+
+	mockService, mockValidator, authHandler := setupMockService(t)
+	mockService.EXPECT().SignInUser(req.Context(), params).Return(testID, nil)
+	mockValidator.EXPECT().Struct(params).Return(nil)
+
+	authHandler.HandleUserSignIn(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code, "Response status code should match")
+
+	actualContentType := rr.Header().Get("Content-Type")
+	assert.Equal(t, contentType, actualContentType, "Content-Type header should match")
 }
 
 func setupMockService(t *testing.T) (*mocks.MockAuthService, *validationMocks.MockValidator, handler.AuthHandler) {
