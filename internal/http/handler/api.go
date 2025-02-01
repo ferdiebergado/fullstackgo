@@ -54,3 +54,7 @@ func responseValError(w http.ResponseWriter, valErrs *validator.ValidationErrors
 
 	responseJSON(w, http.StatusUnprocessableEntity, res)
 }
+
+func serverError(w http.ResponseWriter) {
+	http.Error(w, "An error occurred.", http.StatusInternalServerError)
+}
