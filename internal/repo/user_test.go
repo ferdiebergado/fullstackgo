@@ -25,7 +25,7 @@ var sqlmockOpts = sqlmock.QueryMatcherOption(sqlmock.QueryMatcherEqual)
 func TestAuthRepo_SignUpUser_Success(t *testing.T) {
 	mock, userRepo := setupMockDB(t)
 
-	params := model.UserCreateParams{
+	params := model.User{
 		Email:        testEmail,
 		PasswordHash: testPasswordHashed,
 	}
@@ -48,14 +48,14 @@ func TestAuthRepo_SignUpUser_Success(t *testing.T) {
 func TestAuthRepo_SignUpUser_Duplicate(t *testing.T) {
 	mock, userRepo := setupMockDB(t)
 
-	params := model.UserCreateParams{
+	params := model.User{
 		Email:        testEmail,
 		PasswordHash: testPasswordHashed,
 	}
 
 	mock.ExpectQuery(repo.CreateUserQuery).
 		WithArgs(params.Email, params.PasswordHash).
-		WillReturnError(service.ErrDuplicateUser)
+		WillReturnError(service.ErrModelExists)
 
 	_, err := userRepo.CreateUser(context.Background(), params)
 
@@ -66,7 +66,7 @@ func TestAuthRepo_SignUpUser_Duplicate(t *testing.T) {
 func TestAuthRepo_SignUpUser_InvalidData(t *testing.T) {
 	mock, userRepo := setupMockDB(t)
 
-	params := model.UserCreateParams{
+	params := model.User{
 		Email:        testEmail,
 		PasswordHash: testPasswordHashed,
 	}
@@ -81,36 +81,24 @@ func TestAuthRepo_SignUpUser_InvalidData(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet(), "some expectations were not met")
 }
 
-func TestAuthRepo_SignInUser_Success(t *testing.T) {
+func TestAuthRepo_FindUserByEmail_Success(t *testing.T) {
 	mock, userRepo := setupMockDB(t)
-
-	params := model.UserSignInParams{
-		Email:    testEmail,
-		Password: testPassword,
-	}
-
 	mock.ExpectQuery(repo.FindUserByEmailQuery).
-		WithArgs(params.Email).
+		WithArgs(testEmail).
 		WillReturnRows(sqlmock.NewRows([]string{"id", "password_hash"}).
 			AddRow(testID, testPasswordHashed))
-	user, err := userRepo.FindUserByEmail(context.Background(), params.Email)
 
+	user, err := userRepo.FindUserByEmail(context.Background(), testEmail)
 	assert.NoError(t, err, "signin should not return an error")
 	assert.Equal(t, testPasswordHashed, user.PasswordHash, "password hash must match")
 	assert.NoError(t, mock.ExpectationsWereMet(), "some expectations were not met")
 }
 
-func TestAuthRepo_SignInUser_UserNotFound(t *testing.T) {
+func TestAuthRepo_FindUserByEmail_UserNotFound(t *testing.T) {
 	mock, userRepo := setupMockDB(t)
+	mock.ExpectQuery(repo.FindUserByEmailQuery).WithArgs(testEmail).WillReturnError(sql.ErrNoRows)
 
-	params := model.UserSignInParams{
-		Email:    testEmail,
-		Password: testPassword,
-	}
-
-	mock.ExpectQuery(repo.FindUserByEmailQuery).WithArgs(params.Email).WillReturnError(sql.ErrNoRows)
-	_, err := userRepo.FindUserByEmail(context.Background(), params.Email)
-
+	_, err := userRepo.FindUserByEmail(context.Background(), testEmail)
 	assert.Error(t, err, "signin should return an error")
 	assert.NoError(t, mock.ExpectationsWereMet(), "some expectations were not met")
 }

@@ -9,7 +9,7 @@ import (
 )
 
 type UserRepo interface {
-	CreateUser(ctx context.Context, params model.UserCreateParams) (*model.User, error)
+	CreateUser(ctx context.Context, params model.User) (*model.User, error)
 	FindUserByEmail(ctx context.Context, email string) (*model.User, error)
 }
 
@@ -29,7 +29,7 @@ VALUES $1, $2
 RETURNING id, email, created_at, updated_at
 `
 
-func (r *userRepo) CreateUser(ctx context.Context, params model.UserCreateParams) (*model.User, error) {
+func (r *userRepo) CreateUser(ctx context.Context, params model.User) (*model.User, error) {
 	var user model.User
 	if err := r.db.QueryRowContext(ctx, CreateUserQuery, params.Email, params.PasswordHash).
 		Scan(&user.ID, &user.Email, &user.CreatedAt, &user.UpdatedAt); err != nil {

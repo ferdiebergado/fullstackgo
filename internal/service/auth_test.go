@@ -27,11 +27,13 @@ func TestAuthService_SignUpUser_Success(t *testing.T) {
 	ctx := context.Background()
 	now := time.Now().UTC()
 	signUpParams := newSignUpParams()
-	createParams := &model.UserCreateParams{
+	createParams := &model.User{
 		Email:        signUpParams.Email,
 		PasswordHash: hashedPassword,
 	}
 
+	mockRepo.EXPECT().FindUserByEmail(ctx, signUpParams.Email).Return(nil, nil)
+	mockHasher.EXPECT().Hash(signUpParams.Password).Return(hashedPassword, nil)
 	mockRepo.EXPECT().CreateUser(ctx, *createParams).Return(&model.User{
 		ID:           testID,
 		Email:        testEmail,
@@ -39,7 +41,6 @@ func TestAuthService_SignUpUser_Success(t *testing.T) {
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}, nil)
-	mockHasher.EXPECT().Hash(signUpParams.Password).Return(hashedPassword, nil)
 
 	user, err := authService.SignUpUser(ctx, signUpParams)
 
@@ -56,10 +57,12 @@ func TestAuthService_SignUpUser_PasswordHashed(t *testing.T) {
 	now := time.Now().UTC()
 
 	signUpParams := newSignUpParams()
-	createParams := model.UserCreateParams{
+	createParams := model.User{
 		Email:        signUpParams.Email,
 		PasswordHash: hashedPassword,
 	}
+	mockRepo.EXPECT().FindUserByEmail(ctx, signUpParams.Email).Return(nil, nil)
+	mockHasher.EXPECT().Hash(signUpParams.Password).Return(hashedPassword, nil)
 	mockRepo.EXPECT().CreateUser(ctx, createParams).Return(&model.User{
 		ID:           testID,
 		Email:        signUpParams.Email,
@@ -67,14 +70,49 @@ func TestAuthService_SignUpUser_PasswordHashed(t *testing.T) {
 		CreatedAt:    now,
 		UpdatedAt:    now,
 	}, nil)
-	mockHasher.EXPECT().Hash(signUpParams.Password).Return(hashedPassword, nil)
 	user, err := authService.SignUpUser(ctx, signUpParams)
 
 	assert.NoError(t, err, "signup should not return an error")
 	assert.Equal(t, hashedPassword, user.PasswordHash, "password hash must match")
 }
 
+func TestAuthService_SignUpUser_Duplicate(t *testing.T) {
+	mockRepo, mockHasher, authService := setupMocks(t)
+	ctx := context.Background()
+	signUpParams := newSignUpParams()
+
+	mockRepo.EXPECT().FindUserByEmail(ctx, signUpParams.Email).Return(&model.User{}, nil)
+	mockHasher.EXPECT().Hash(gomock.Any()).Times(0)
+	mockRepo.EXPECT().CreateUser(gomock.Any(), gomock.Any()).Times(0)
+
+	user, err := authService.SignUpUser(ctx, signUpParams)
+
+	wantedErr := service.ErrModelExists
+
+	assert.Error(t, err, "signup should return an error")
+	assert.ErrorIsf(t, err, wantedErr, "error should be %v", wantedErr)
+	assert.Nil(t, user, "user should be nil")
+}
+
 func TestAuthService_SignInUser_Success(t *testing.T) {
+	ctx := context.Background()
+	input := model.UserSignInParams{
+		Email:    testEmail,
+		Password: testPassword,
+	}
+	mockRepo, mockHasher, authService := setupMocks(t)
+	mockRepo.EXPECT().FindUserByEmail(ctx, input.Email).Return(&model.User{
+		ID:           testID,
+		PasswordHash: hashedPassword,
+	}, nil)
+	mockHasher.EXPECT().Verify(input.Password, hashedPassword).Return(true, nil)
+
+	id, err := authService.SignInUser(ctx, input)
+	assert.NoError(t, err, "signin should not return an error")
+	assert.Equal(t, testID, id, "ID must match")
+}
+
+func TestAuthService_SignInUser_NotFound(t *testing.T) {
 	ctx := context.Background()
 	mockRepo, mockHasher, authService := setupMocks(t)
 
@@ -83,16 +121,15 @@ func TestAuthService_SignInUser_Success(t *testing.T) {
 		Password: testPassword,
 	}
 
-	mockRepo.EXPECT().FindUserByEmail(ctx, signInParams.Email).Return(&model.User{
-		ID:           testID,
-		PasswordHash: hashedPassword,
-	}, nil)
-	mockHasher.EXPECT().Verify(signInParams.Password, hashedPassword).Return(true, nil)
+	mockRepo.EXPECT().FindUserByEmail(ctx, signInParams.Email).Return(nil, service.ErrModelNotFound)
+	mockHasher.EXPECT().Verify(gomock.Any(), gomock.Any()).Times(0)
 
 	id, err := authService.SignInUser(ctx, signInParams)
 
-	assert.NoError(t, err, "signin should not return an error")
-	assert.Equal(t, testID, id, "ID must match")
+	wantedErr := service.ErrModelNotFound
+	assert.Error(t, err, "signin should return an error")
+	assert.ErrorIsf(t, err, wantedErr, "error should be %v", wantedErr)
+	assert.Zero(t, id, "ID should be empty")
 }
 
 func setupMocks(t *testing.T) (*repoMocks.MockUserRepo, *secMocks.MockHasher, service.AuthService) {
