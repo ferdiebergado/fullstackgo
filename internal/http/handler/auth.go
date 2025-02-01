@@ -81,5 +81,9 @@ func (h *authHandler) HandleUserSignIn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	responseJSON(w, http.StatusOK, []byte("{}"))
+	res := APIResponse{
+		Message: "Signin successful.",
+	}
+
+	responseJSON(w, http.StatusOK, res)
 }

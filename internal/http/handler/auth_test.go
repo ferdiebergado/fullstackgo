@@ -117,7 +117,7 @@ func TestAuthHandler_HandleUserSignUp_DuplicateUser(t *testing.T) {
 	assert.Equal(t, service.ErrEmailTaken.Error(), res.Errors[0]["email"], "Validation errors should match")
 }
 
-func TestAuthHandler_HandleSignUpUser_InvalidInput(t *testing.T) {
+func TestAuthHandler_HandleUserSignUp_InvalidInput(t *testing.T) {
 	mockService, mockValidator, authHandler := setupMockService(t)
 
 	tests := []struct {
@@ -210,6 +210,13 @@ func TestAuthHandler_HandleUserSignIn_Success(t *testing.T) {
 
 	actualContentType := rr.Header().Get("Content-Type")
 	assert.Equal(t, contentType, actualContentType, "Content-Type header should match")
+
+	var res handler.APIResponse
+	if err := json.NewDecoder(rr.Body).Decode(&res); err != nil {
+		t.Fatalf("decode json: %v", err)
+	}
+
+	assert.Equal(t, "Signin successful.", res.Message, "Message should match")
 }
 
 func setupMockService(t *testing.T) (*mocks.MockAuthService, *validationMocks.MockValidator, handler.AuthHandler) {
