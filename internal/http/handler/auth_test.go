@@ -48,7 +48,7 @@ func TestAuthHandler_HandleUserSignUp_Success(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	now := time.Now().UTC().Truncate(time.Millisecond)
-	mockService, mockValidator, handler := setupMockService(t)
+	mockService, mockValidator, authHandler := setupMockService(t)
 	mockValidator.EXPECT().Struct(newUser).Return(nil)
 	mockService.EXPECT().SignUpUser(req.Context(), newUser).DoAndReturn(
 		func(_ context.Context, params model.UserSignUpParams) (*model.User, error) {
@@ -62,7 +62,7 @@ func TestAuthHandler_HandleUserSignUp_Success(t *testing.T) {
 		},
 	)
 
-	handler.HandleUserSignUp(rr, req)
+	authHandler.HandleUserSignUp(rr, req)
 
 	assert.Equal(t, http.StatusCreated, rr.Code, "Response status code should match")
 
@@ -89,11 +89,11 @@ func TestAuthHandler_HandleUserSignIn_Success(t *testing.T) {
 	req.Header.Set("Content-Type", contentType)
 	rr := httptest.NewRecorder()
 
-	mockService, mockValidator, handler := setupMockService(t)
+	mockService, mockValidator, authHandler := setupMockService(t)
 	mockService.EXPECT().SignInUser(req.Context(), signInParams).Return(testID, nil)
 	mockValidator.EXPECT().Struct(signInParams).Return(nil)
 
-	handler.HandleUserSignIn(rr, req)
+	authHandler.HandleUserSignIn(rr, req)
 
 	assert.Equal(t, http.StatusOK, rr.Code, "Response status code should match")
 
