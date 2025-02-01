@@ -46,11 +46,10 @@ WHERE email = $1
 `
 
 func (r *userRepo) FindUserByEmail(ctx context.Context, email string) (*model.User, error) {
-	var id string
-	var hash string
-	if err := r.db.QueryRowContext(ctx, FindUserByEmailQuery, email).Scan(&id, &hash); err != nil {
+	var user model.User
+	if err := r.db.QueryRowContext(ctx, FindUserByEmailQuery, email).Scan(&user.ID, &user.PasswordHash); err != nil {
 		return nil, err
 	}
 
-	return &model.User{ID: id, PasswordHash: hash}, nil
+	return &user, nil
 }
