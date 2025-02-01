@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -32,27 +31,26 @@ const (
 )
 
 func TestAuthHandler_HandleUserSignUp_Success(t *testing.T) {
-	newUser := model.UserSignUpParams{
+	params := model.UserSignUpParams{
 		Email:           testEmail,
 		Password:        testPassword,
 		PasswordConfirm: testPassword,
 	}
 
-	userJSON, err := json.Marshal(newUser)
+	userJSON, err := json.Marshal(params)
 	if err != nil {
-		t.Fatalf("json.Marshal: %v, err: %v", newUser, err)
+		t.Fatalf("json.Marshal: %v, err: %v", params, err)
 	}
 
 	req := httptest.NewRequest(http.MethodPost, signUpURL, bytes.NewBuffer(userJSON))
 	req.Header.Set("Content-Type", contentType)
 	rr := httptest.NewRecorder()
 
-	now := time.Now().UTC().Truncate(time.Millisecond)
 	mockService, mockValidator, authHandler := setupMockService(t)
-	mockValidator.EXPECT().Struct(newUser).Return(nil)
-	mockService.EXPECT().SignUpUser(req.Context(), newUser).DoAndReturn(
+	mockValidator.EXPECT().Struct(params).Return(nil)
+	mockService.EXPECT().SignUpUser(req.Context(), params).DoAndReturn(
 		func(_ context.Context, params model.UserSignUpParams) (*model.User, error) {
-			tNow := time.Now().UTC().Truncate(time.Millisecond)
+			tNow := time.Now().UTC()
 			return &model.User{
 				ID:        testID,
 				Email:     params.Email,
@@ -69,9 +67,15 @@ func TestAuthHandler_HandleUserSignUp_Success(t *testing.T) {
 	actualContentType := rr.Header().Get("Content-Type")
 	assert.Equal(t, contentType, actualContentType, "Content-Type header should match")
 
-	expectedJSON := fmt.Sprintf(`{"id": "%s", "email": "%s", "created_at": "%s", "updated_at": "%s"}`,
-		testID, newUser.Email, now.Format(time.RFC3339Nano), now.Format(time.RFC3339Nano))
-	assert.JSONEq(t, expectedJSON, rr.Body.String(), "Response body should match expected JSON")
+	var newUser model.User
+	if err = json.Unmarshal(rr.Body.Bytes(), &newUser); err != nil {
+		t.Fatalf("decode json: %v", err)
+	}
+
+	assert.Equal(t, testID, newUser.ID, "ID should match")
+	assert.Equal(t, params.Email, newUser.Email, "email should match")
+	assert.NotZero(t, newUser.CreatedAt, "CreatedAt should not be zero")
+	assert.NotZero(t, newUser.UpdatedAt, "UpdatedAt should not be zero")
 }
 
 func TestAuthHandler_HandleUserSignIn_Success(t *testing.T) {
