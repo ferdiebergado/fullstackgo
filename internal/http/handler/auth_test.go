@@ -39,12 +39,12 @@ func TestAuthHandler_HandleUserSignUp_Success(t *testing.T) {
 		PasswordConfirm: testPassword,
 	}
 
-	userJSON, err := json.Marshal(params)
+	jsonParams, err := json.Marshal(params)
 	if err != nil {
 		t.Fatalf("json.Marshal: %v, err: %v", params, err)
 	}
 
-	req := httptest.NewRequest(http.MethodPost, signUpURL, bytes.NewBuffer(userJSON))
+	req := httptest.NewRequest(http.MethodPost, signUpURL, bytes.NewBuffer(jsonParams))
 	req.Header.Set("Content-Type", contentType)
 	rr := httptest.NewRecorder()
 
@@ -81,26 +81,25 @@ func TestAuthHandler_HandleUserSignUp_Success(t *testing.T) {
 }
 
 func TestAuthHandler_HandleUserSignIn_Success(t *testing.T) {
-	signInParams := model.UserSignInParams{
+	params := model.UserSignInParams{
 		Email:    testEmail,
 		Password: testPassword,
 	}
 
-	signInJSON, err := json.Marshal(signInParams)
+	jsonParams, err := json.Marshal(params)
 	if err != nil {
-		t.Fatalf("json.Marshal: %v, err: %v", signInParams, err)
+		t.Fatalf("json.Marshal: %v, err: %v", params, err)
 	}
 
-	req := httptest.NewRequest(http.MethodPost, signInURL, bytes.NewBuffer(signInJSON))
+	req := httptest.NewRequest(http.MethodPost, signInURL, bytes.NewBuffer(jsonParams))
 	req.Header.Set("Content-Type", contentType)
 	rr := httptest.NewRecorder()
 
 	mockService, mockValidator, authHandler := setupMockService(t)
-	mockService.EXPECT().SignInUser(req.Context(), signInParams).Return(testID, nil)
-	mockValidator.EXPECT().Struct(signInParams).Return(nil)
+	mockService.EXPECT().SignInUser(req.Context(), params).Return(testID, nil)
+	mockValidator.EXPECT().Struct(params).Return(nil)
 
 	authHandler.HandleUserSignIn(rr, req)
-
 	assert.Equal(t, http.StatusOK, rr.Code, "Response status code should match")
 
 	actualContentType := rr.Header().Get("Content-Type")
@@ -145,7 +144,7 @@ func TestAuthHandler_SignUpUser_InvalidInput(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			signUpJSON, err := json.Marshal(tt.given)
+			jsonParams, err := json.Marshal(tt.given)
 			if err != nil {
 				t.Fatalf("json.Marshal: %v, err: %v", tt.given, err)
 			}
@@ -157,7 +156,7 @@ func TestAuthHandler_SignUpUser_InvalidInput(t *testing.T) {
 				},
 			})
 			mockService.EXPECT().SignUpUser(gomock.Any(), gomock.Any()).Times(0)
-			req := httptest.NewRequest(http.MethodPost, signUpURL, bytes.NewBuffer(signUpJSON))
+			req := httptest.NewRequest(http.MethodPost, signUpURL, bytes.NewBuffer(jsonParams))
 			req.Header.Set("Content-Type", contentType)
 			rr := httptest.NewRecorder()
 
@@ -181,7 +180,7 @@ func setupMockService(t *testing.T) (*mocks.MockAuthService, *validationMocks.Mo
 	ctrl := gomock.NewController(t)
 	mockService := mocks.NewMockAuthService(ctrl)
 	mockValidator := validationMocks.NewMockValidator(ctrl)
-	handler := handler.NewAuthHandler(mockService, mockValidator)
+	authHandler := handler.NewAuthHandler(mockService, mockValidator)
 
-	return mockService, mockValidator, handler
+	return mockService, mockValidator, authHandler
 }
