@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"github.com/go-playground/validator/v10"
 )
 
 type APIResponse struct {
@@ -35,4 +37,20 @@ func responseJSON(w http.ResponseWriter, status int, data any) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func responseValError(w http.ResponseWriter, valErrs *validator.ValidationErrors) {
+	errs := make([]map[string]string, 0)
+	for _, e := range *valErrs {
+		errs = append(errs, map[string]string{
+			e.Field(): e.Error(),
+		})
+	}
+
+	res := APIResponse{
+		Message: "Invalid input!",
+		Errors:  errs,
+	}
+
+	responseJSON(w, http.StatusUnprocessableEntity, res)
 }

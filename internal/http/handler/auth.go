@@ -39,19 +39,7 @@ func (h *authHandler) HandleUserSignUp(w http.ResponseWriter, r *http.Request) {
 	if err := h.validator.Struct(params); err != nil {
 		var valErrs *validator.ValidationErrors
 		if errors.As(err, &valErrs) {
-			validationErrs := make([]map[string]string, 0)
-			for _, e := range *valErrs {
-				validationErrs = append(validationErrs, map[string]string{
-					e.Field(): e.Error(),
-				})
-			}
-
-			res := APIResponse{
-				Message: "Invalid input!",
-				Errors:  validationErrs,
-			}
-
-			responseJSON(w, http.StatusUnprocessableEntity, res)
+			responseValError(w, valErrs)
 			return
 		}
 
@@ -76,12 +64,13 @@ func (h *authHandler) HandleUserSignIn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.validator.Struct(params); err != nil {
-		if _, ok := err.(*validator.InvalidValidationError); ok {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		var valErrs *validator.ValidationErrors
+		if errors.As(err, &valErrs) {
+			responseValError(w, valErrs)
 			return
 		}
 
-		http.Error(w, err.Error(), http.StatusUnprocessableEntity)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
