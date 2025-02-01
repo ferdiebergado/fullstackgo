@@ -7,7 +7,6 @@ import (
 	"github.com/ferdiebergado/fullstackgo/internal/model"
 	"github.com/ferdiebergado/fullstackgo/internal/pkg/validation"
 	"github.com/ferdiebergado/fullstackgo/internal/service"
-	"github.com/go-playground/validator/v10"
 )
 
 type AuthHandler interface {
@@ -37,14 +36,9 @@ func (h *authHandler) HandleUserSignUp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.validator.Struct(params); err != nil {
-		var valErrs *validator.ValidationErrors
-		if errors.As(err, &valErrs) {
-			responseValError(w, valErrs)
+		if handleValidationError(w, err) {
 			return
 		}
-
-		serverError(w)
-		return
 	}
 
 	user, err := h.service.SignUpUser(r.Context(), params)
@@ -76,14 +70,9 @@ func (h *authHandler) HandleUserSignIn(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.validator.Struct(params); err != nil {
-		var valErrs *validator.ValidationErrors
-		if errors.As(err, &valErrs) {
-			responseValError(w, valErrs)
+		if handleValidationError(w, err) {
 			return
 		}
-
-		serverError(w)
-		return
 	}
 
 	_, err := h.service.SignInUser(r.Context(), params)

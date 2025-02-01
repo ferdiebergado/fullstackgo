@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -57,4 +58,15 @@ func responseValError(w http.ResponseWriter, valErrs *validator.ValidationErrors
 
 func serverError(w http.ResponseWriter) {
 	http.Error(w, "An error occurred.", http.StatusInternalServerError)
+}
+
+func handleValidationError(w http.ResponseWriter, err error) bool {
+	var valErrs *validator.ValidationErrors
+	if errors.As(err, &valErrs) {
+		responseValError(w, valErrs)
+		return true
+	}
+
+	serverError(w)
+	return true
 }
