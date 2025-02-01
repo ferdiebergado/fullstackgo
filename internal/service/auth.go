@@ -39,7 +39,7 @@ func (s *authService) SignUpUser(ctx context.Context, params model.UserSignUpPar
 	}
 
 	if existing != nil {
-		return nil, ErrModelExists
+		return nil, ErrEmailTaken
 	}
 
 	hash, err := s.hasher.Hash(params.Password)
@@ -59,7 +59,7 @@ func (s *authService) SignInUser(ctx context.Context, params model.UserSignInPar
 	user, err := s.repo.FindUserByEmail(ctx, params.Email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return "", ErrModelNotFound
+			return "", ErrUserNotFound
 		}
 
 		return "", err

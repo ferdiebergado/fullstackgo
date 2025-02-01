@@ -55,7 +55,7 @@ func TestAuthRepo_SignUpUser_Duplicate(t *testing.T) {
 
 	mock.ExpectQuery(repo.CreateUserQuery).
 		WithArgs(params.Email, params.PasswordHash).
-		WillReturnError(service.ErrModelExists)
+		WillReturnError(service.ErrEmailTaken)
 
 	_, err := userRepo.CreateUser(context.Background(), params)
 

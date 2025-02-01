@@ -2,5 +2,5 @@ package service
 
 import "errors"
 
-var ErrModelNotFound = errors.New("model not found")
-var ErrModelExists = errors.New("model already exists")
+var ErrUserNotFound = errors.New("user does not exists")
+var ErrEmailTaken = errors.New("email is already taken")

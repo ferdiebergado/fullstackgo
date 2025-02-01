@@ -86,11 +86,8 @@ func TestAuthService_SignUpUser_Duplicate(t *testing.T) {
 	mockRepo.EXPECT().CreateUser(gomock.Any(), gomock.Any()).Times(0)
 
 	user, err := authService.SignUpUser(ctx, signUpParams)
-
-	wantedErr := service.ErrModelExists
-
 	assert.Error(t, err, "signup should return an error")
-	assert.ErrorIsf(t, err, wantedErr, "error should be %v", wantedErr)
+	assert.ErrorIs(t, err, service.ErrEmailTaken, "errors should match")
 	assert.Nil(t, user, "user should be nil")
 }
 
@@ -121,14 +118,12 @@ func TestAuthService_SignInUser_NotFound(t *testing.T) {
 		Password: testPassword,
 	}
 
-	mockRepo.EXPECT().FindUserByEmail(ctx, signInParams.Email).Return(nil, service.ErrModelNotFound)
+	mockRepo.EXPECT().FindUserByEmail(ctx, signInParams.Email).Return(nil, service.ErrUserNotFound)
 	mockHasher.EXPECT().Verify(gomock.Any(), gomock.Any()).Times(0)
 
 	id, err := authService.SignInUser(ctx, signInParams)
-
-	wantedErr := service.ErrModelNotFound
 	assert.Error(t, err, "signin should return an error")
-	assert.ErrorIsf(t, err, wantedErr, "error should be %v", wantedErr)
+	assert.ErrorIs(t, err, service.ErrUserNotFound, "errors should match")
 	assert.Zero(t, id, "ID should be empty")
 }
 
