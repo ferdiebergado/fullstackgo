@@ -12,6 +12,8 @@ import (
 	"github.com/ferdiebergado/fullstackgo/internal/repo"
 )
 
+var ErrPasswordMismatch = errors.New("passwords do not match")
+
 type AuthService interface {
 	SignUpUser(ctx context.Context, params model.UserSignUpParams) (*model.User, error)
 	SignInUser(ctx context.Context, params model.UserSignInParams) (string, error)
@@ -33,7 +35,7 @@ func (s *authService) SignUpUser(ctx context.Context, params model.UserSignUpPar
 	existing, err := s.repo.FindUserByEmail(ctx, params.Email)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("find user by email: %v", err)
 	}
 
 	if existing != nil {
@@ -45,12 +47,12 @@ func (s *authService) SignUpUser(ctx context.Context, params model.UserSignUpPar
 		return nil, fmt.Errorf("hash password: %w", err)
 	}
 
-	createParams := model.User{
+	user := model.User{
 		Email:        params.Email,
 		PasswordHash: hash,
 	}
 
-	return s.repo.CreateUser(ctx, createParams)
+	return s.repo.CreateUser(ctx, user)
 }
 
 func (s *authService) SignInUser(ctx context.Context, params model.UserSignInParams) (string, error) {
@@ -66,11 +68,11 @@ func (s *authService) SignInUser(ctx context.Context, params model.UserSignInPar
 	ok, err := s.hasher.Verify(params.Password, user.PasswordHash)
 
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("hasher verify: %v", err)
 	}
 
 	if !ok {
-		return "", errors.New("passwords do not match")
+		return "", ErrPasswordMismatch
 	}
 
 	return user.ID, nil
